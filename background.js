@@ -1,11 +1,18 @@
-// background.js - Service Worker para monitorar requisições de imagem
+// background.js - Service Worker
 
-// Mapa de imagens capturadas por tabId: { url, size, contentType, timestamp }
-const capturedImages = {};
-// Estado de captura por tabId
+'use strict';
+
+// ─── Estado ───────────────────────────────────────────────────────────────────
+
+// CDP sessions: tabId → { images: { requestId → {...} }, attached: bool }
+const debuggerSessions = {};
+
+// Fallback webRequest (caso o debugger falhe em alguma edge case)
+const webRequestImages = {};
 const capturingTabs = new Set();
 
-// Padrões que indicam que a URL é uma imagem de página de jornal
+// ─── Filtro de imagem ─────────────────────────────────────────────────────────
+
 const IMAGE_URL_PATTERNS = [
   /\.jpg(\?.*)?$/i,
   /\.jpeg(\?.*)?$/i,
@@ -15,51 +22,161 @@ const IMAGE_URL_PATTERNS = [
   /presscdn\.com/i,
   /pressdisplay\.com/i,
 ];
+const UI_EXCLUDE = /favicon|\/icon|logo|sprite|placeholder/i;
 
-function isLikelyNewspaperImage(url, contentType) {
-  if (contentType && contentType.startsWith('image/')) {
-    // Exclui ícones pequenos e imagens de UI
-    if (url.includes('favicon') || url.includes('icon') || url.includes('logo')) {
-      return false;
-    }
-    return true;
-  }
-  return IMAGE_URL_PATTERNS.some((pattern) => pattern.test(url));
+function isNewspaperImage(url, mimeType) {
+  if (UI_EXCLUDE.test(url)) return false;
+  if (mimeType && mimeType.startsWith('image/')) return true;
+  return IMAGE_URL_PATTERNS.some((p) => p.test(url));
 }
 
-// Monitora headers de resposta para capturar tamanho das imagens
+// ─── CDP helpers ─────────────────────────────────────────────────────────────
+
+function cdpAttach(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.attach({ tabId }, '1.3', () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
+    });
+  });
+}
+
+function cdpDetach(tabId) {
+  return new Promise((resolve) => {
+    chrome.debugger.detach({ tabId }, () => {
+      chrome.runtime.lastError; // consume
+      resolve();
+    });
+  });
+}
+
+function cdpSend(tabId, method, params = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand({ tabId }, method, params, (result) => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve(result);
+    });
+  });
+}
+
+// ─── CDP event listener ───────────────────────────────────────────────────────
+
+chrome.debugger.onEvent.addListener((source, method, params) => {
+  const tabId = source.tabId;
+  const session = debuggerSessions[tabId];
+  if (!session) return;
+
+  if (method === 'Network.responseReceived') {
+    const { requestId, response } = params;
+    if (!isNewspaperImage(response.url, response.mimeType)) return;
+
+    const contentLength = response.headers
+      ? parseInt(response.headers['content-length'] || response.headers['Content-Length'] || '0', 10)
+      : 0;
+
+    session.images[requestId] = {
+      url: response.url,
+      size: contentLength,
+      contentType: response.mimeType,
+      source: response.fromDiskCache ? 'disk_cache' : 'network',
+    };
+  }
+
+  if (method === 'Network.loadingFinished') {
+    const { requestId, encodedDataLength } = params;
+    const img = session.images[requestId];
+    if (img && encodedDataLength > 0) {
+      // encodedDataLength = bytes reais recebidos da rede (0 para disco)
+      if (img.source === 'network') {
+        img.size = encodedDataLength;
+      } else if (img.size === 0) {
+        // Cache: se ainda sem tamanho, usa como estimativa
+        img.size = encodedDataLength;
+      }
+    }
+  }
+});
+
+// Limpa sessão se o debugger for desconectado externamente (ex: usuário abre DevTools)
+chrome.debugger.onDetach.addListener((source) => {
+  const tabId = source.tabId;
+  if (debuggerSessions[tabId]) {
+    debuggerSessions[tabId].attached = false;
+  }
+});
+
+// ─── Operações de captura ─────────────────────────────────────────────────────
+
+async function startDebugCapture(tabId) {
+  // Se já está attached, apenas limpa imagens
+  if (debuggerSessions[tabId] && debuggerSessions[tabId].attached) {
+    debuggerSessions[tabId].images = {};
+    return { method: 'cdp_reused' };
+  }
+
+  debuggerSessions[tabId] = { images: {}, attached: false };
+
+  try {
+    await cdpAttach(tabId);
+    debuggerSessions[tabId].attached = true;
+    await cdpSend(tabId, 'Network.enable', {
+      maxResourceBufferSize: 100 * 1024 * 1024,
+      maxTotalBufferSize:    200 * 1024 * 1024,
+    });
+    return { method: 'cdp' };
+  } catch (err) {
+    delete debuggerSessions[tabId];
+    // Fallback para webRequest
+    webRequestImages[tabId] = {};
+    capturingTabs.add(tabId);
+    return { method: 'webRequest', error: err.message };
+  }
+}
+
+async function stopDebugCapture(tabId) {
+  const session = debuggerSessions[tabId];
+  if (!session) {
+    const images = webRequestImages[tabId] ? Object.values(webRequestImages[tabId]) : [];
+    capturingTabs.delete(tabId);
+    delete webRequestImages[tabId];
+    return images;
+  }
+
+  const images = Object.values(session.images);
+
+  if (session.attached) {
+    await cdpDetach(tabId);
+  }
+  delete debuggerSessions[tabId];
+
+  return images;
+}
+
+// ─── Fallback: webRequest ─────────────────────────────────────────────────────
+
 chrome.webRequest.onHeadersReceived.addListener(
-  function (details) {
+  (details) => {
     const tabId = details.tabId;
     if (tabId < 0 || !capturingTabs.has(tabId)) return;
 
     let contentLength = 0;
     let contentType = '';
-
-    for (const header of details.responseHeaders || []) {
-      const name = header.name.toLowerCase();
-      if (name === 'content-length') {
-        contentLength = parseInt(header.value, 10) || 0;
-      }
-      if (name === 'content-type') {
-        contentType = header.value.split(';')[0].trim();
-      }
+    for (const h of details.responseHeaders || []) {
+      const name = h.name.toLowerCase();
+      if (name === 'content-length') contentLength = parseInt(h.value, 10) || 0;
+      if (name === 'content-type') contentType = h.value.split(';')[0].trim();
     }
 
-    if (!isLikelyNewspaperImage(details.url, contentType)) return;
+    if (!isNewspaperImage(details.url, contentType)) return;
+    if (!webRequestImages[tabId]) webRequestImages[tabId] = {};
 
-    if (!capturedImages[tabId]) {
-      capturedImages[tabId] = {};
-    }
-
-    // Atualiza se for maior ou nova
-    const existing = capturedImages[tabId][details.url];
+    const existing = webRequestImages[tabId][details.url];
     if (!existing || contentLength > existing.size) {
-      capturedImages[tabId][details.url] = {
+      webRequestImages[tabId][details.url] = {
         url: details.url,
         size: contentLength,
-        contentType: contentType,
-        timestamp: Date.now(),
+        contentType,
+        source: 'network',
       };
     }
   },
@@ -67,74 +184,65 @@ chrome.webRequest.onHeadersReceived.addListener(
   ['responseHeaders']
 );
 
-// Listener de mensagens do popup e content script
+// ─── Mensagens ────────────────────────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = message.tabId || (sender.tab && sender.tab.id);
 
   if (message.action === 'startCapture') {
-    if (tabId) {
-      capturedImages[tabId] = {};
-      capturingTabs.add(tabId);
-    }
-    sendResponse({ success: true });
+    startDebugCapture(tabId)
+      .then((result) => sendResponse({ success: true, result }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
 
   } else if (message.action === 'stopCapture') {
-    if (tabId) capturingTabs.delete(tabId);
-    sendResponse({ success: true });
+    stopDebugCapture(tabId)
+      .then((images) => sendResponse({ success: true, images }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
 
   } else if (message.action === 'getImages') {
-    const images = capturedImages[tabId] ? Object.values(capturedImages[tabId]) : [];
-    // Ordena por tamanho decrescente
+    // Retorna imagens acumuladas sem parar
+    const session = debuggerSessions[tabId];
+    const images = session
+      ? Object.values(session.images)
+      : (webRequestImages[tabId] ? Object.values(webRequestImages[tabId]) : []);
     images.sort((a, b) => b.size - a.size);
     sendResponse({ images, total: images.length });
 
-  } else if (message.action === 'getLargestImage') {
-    const images = capturedImages[tabId] ? Object.values(capturedImages[tabId]) : [];
-    if (images.length === 0) {
-      sendResponse({ image: null, total: 0 });
-      return true;
-    }
-    images.sort((a, b) => b.size - a.size);
-    sendResponse({ image: images[0], total: images.length });
+  } else if (message.action === 'clearImages') {
+    if (debuggerSessions[tabId]) debuggerSessions[tabId].images = {};
+    if (webRequestImages[tabId]) webRequestImages[tabId] = {};
+    sendResponse({ success: true });
 
   } else if (message.action === 'downloadImage') {
     const { url, filename } = message;
     chrome.downloads.download(
-      {
-        url: url,
-        filename: filename || `valor_economico_${Date.now()}.jpg`,
-        saveAs: true,
-      },
+      { url, filename: filename || `valor_economico_${Date.now()}.jpg`, saveAs: true },
       (downloadId) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({ success: false, error: chrome.runtime.lastError.message });
-        } else {
-          sendResponse({ success: true, downloadId });
-        }
+        if (chrome.runtime.lastError) sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        else sendResponse({ success: true, downloadId });
       }
     );
 
-  } else if (message.action === 'clearImages') {
-    if (tabId) capturedImages[tabId] = {};
-    sendResponse({ success: true });
-
   } else if (message.action === 'fetchAndCheckSize') {
-    // Para URLs sem content-length, faz um HEAD request para checar tamanho real
-    const { url } = message;
-    fetch(url, { method: 'HEAD' })
-      .then((res) => {
-        const size = parseInt(res.headers.get('content-length') || '0', 10);
-        const contentType = res.headers.get('content-type') || '';
-        sendResponse({ size, contentType, success: true });
-      })
+    fetch(message.url, { method: 'HEAD' })
+      .then((res) => sendResponse({
+        size: parseInt(res.headers.get('content-length') || '0', 10),
+        contentType: res.headers.get('content-type') || '',
+        success: true,
+      }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
   }
 
-  return true; // Mantém o canal aberto para respostas assíncronas
+  return true;
 });
 
-// Limpa dados quando a tab é fechada
-chrome.tabs.onRemoved.addListener((tabId) => {
-  delete capturedImages[tabId];
+// ─── Limpeza ao fechar aba ────────────────────────────────────────────────────
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  if (debuggerSessions[tabId]) {
+    if (debuggerSessions[tabId].attached) await cdpDetach(tabId);
+    delete debuggerSessions[tabId];
+  }
+  delete webRequestImages[tabId];
   capturingTabs.delete(tabId);
 });

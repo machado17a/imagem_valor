@@ -189,53 +189,33 @@ async function runCapture() {
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    // 2. Limpa o buffer de performance para garantir leitura limpa nesta sessão
-    //    (resolve o problema de "sumiu depois de abrir DevTools")
-    await sendToContent(currentTabId, { action: 'clearPerformanceTiming' });
+    // 2. Inicia CDP (deve vir ANTES do zoom para capturar todas as requisições) (equivalente a abrir o DevTools Network antes do zoom)
+    //    Isso garante que TODAS as requisições feitas durante o zoom
+    //    sejam interceptadas, incluindo Service Worker, blobs e canvas.
+    setStatus('Ativando monitor de rede (CDP)...', 'info', true);
+    const captureStart = await sendToBackground({ action: 'startCapture', tabId: currentTabId });
+    const usingCDP = captureStart && captureStart.result && captureStart.result.method === 'cdp';
+    if (!usingCDP) {
+      setStatus('CDP indisponível, usando fallback webRequest...', 'warn', true);
+    }
+    await new Promise((r) => setTimeout(r, 400));
 
-    // 3. Inicia monitoramento de rede (webRequest)
-    await sendToBackground({ action: 'clearImages', tabId: currentTabId });
-    await sendToBackground({ action: 'startCapture', tabId: currentTabId });
-
-    // 4. Zoom: sai do máximo → vai ao mínimo → vai ao máximo novamente
-    //    Isso força o viewer a re-solicitar as imagens em alta resolução,
-    //    garantindo que apareçam no buffer de performance mesmo em re-execuções.
+    // 3. Zoom: sai do mínimo → vai ao máximo (forçando re-download das imagens)
     setStatus('Aplicando zoom máximo na página 1...', 'info', true);
     await sendToContent(currentTabId, { action: 'applyMaxZoom' });
-    // applyMaxZoom já aguarda internamente; damos mais uma margem
     await new Promise((r) => setTimeout(r, 1500));
 
-    // 5. Scroll para garantir que todas as partes da página 1 são carregadas
+    // 4. Scroll para garantir que todas as partes da página 1 são carregadas
     setStatus('Carregando toda a página 1...', 'info', true);
     await sendToContent(currentTabId, { action: 'scrollAndLoad' });
     await new Promise((r) => setTimeout(r, 2000));
 
-    // 6. Coleta resultados
+    // 5. Para o CDP e coleta todas as imagens interceptadas
     setStatus('Coletando imagens da página 1...', 'info', true);
+    const stopResult = await sendToBackground({ action: 'stopCapture', tabId: currentTabId });
+    const cdpImages  = (stopResult && stopResult.images) ? stopResult.images : [];
 
-    const bgResult  = await sendToBackground({ action: 'getImages', tabId: currentTabId });
-    const bgImages  = (bgResult && bgResult.images) ? bgResult.images : [];
-
-    const perfResult = await sendToContent(currentTabId, { action: 'getPerformanceImages' });
-    const perfImages = (perfResult && perfResult.images) ? perfResult.images : [];
-
-    // Merge: Performance API tem precedência para source (cache vs rede)
-    const merged = {};
-    for (const img of bgImages) {
-      merged[img.url] = { ...img, source: img.source || 'network' };
-    }
-    for (const img of perfImages) {
-      if (!merged[img.url]) {
-        merged[img.url] = img;
-      } else {
-        merged[img.url].source = img.source;
-        if (img.size > merged[img.url].size) merged[img.url].size = img.size;
-      }
-    }
-
-    await sendToBackground({ action: 'stopCapture', tabId: currentTabId });
-
-    const allImages = Object.values(merged).filter((i) => i.size > 0);
+    const allImages = cdpImages.filter((i) => i.size > 0);
 
     if (allImages.length > 0) {
       const cacheCount   = allImages.filter((i) => i.source === 'disk_cache').length;

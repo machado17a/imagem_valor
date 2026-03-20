@@ -5,6 +5,7 @@
   "description": "Extrai imagens de alta resolução do Valor Econômico no PressReader",
   "permissions": [
     "webRequest",
+    "debugger",
     "downloads",
     "tabs",
     "scripting",
