@@ -4,20 +4,14 @@
 
 // ─── Estado ──────────────────────────────────────────────────────────────────
 let currentTabId = null;
-let capturedImages = [];
-let selectedImageUrl = null;
+let topCacheImage = null;    // maior imagem do disk cache
+let topNetworkImage = null;  // maior imagem da rede
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 
 function setStatus(message, type = 'info', loading = false) {
   const bar = document.getElementById('statusBar');
-  const dotClass = {
-    info: 'blue',
-    ok: 'green',
-    warn: 'orange',
-    error: 'red',
-  }[type] || 'gray';
-
+  const dotClass = { info: 'blue', ok: 'green', warn: 'orange', error: 'red' }[type] || 'gray';
   bar.className = `status-bar ${type}`;
   bar.innerHTML = loading
     ? `<span class="spinner"></span><span>${message}</span>`
@@ -36,19 +30,69 @@ function extractFilename(url) {
     const u = new URL(url);
     const parts = u.pathname.split('/');
     const last = parts[parts.length - 1];
-    return last.length > 30 ? '...' + last.slice(-27) : last || u.hostname;
+    return last.length > 32 ? '...' + last.slice(-29) : last || u.hostname;
   } catch {
     return url.slice(0, 40);
   }
 }
 
-function renderImageList(images) {
-  const list = document.getElementById('imageList');
-  const counter = document.getElementById('imageCounter');
-  const section = document.getElementById('imageSection');
-  const empty = document.getElementById('emptySection');
+// ─── Renderização ─────────────────────────────────────────────────────────────
 
-  if (!images || images.length === 0) {
+function renderGroup(listElId, images, sizeColorClass) {
+  const list = document.getElementById(listElId);
+  list.innerHTML = '';
+  images.forEach((img) => {
+    const item = document.createElement('div');
+    item.className = 'image-item';
+    const isLarge = img.size > 300 * 1024;
+    const sizeClass = isLarge ? sizeColorClass : '';
+    item.innerHTML = `
+      <span class="img-name" title="${img.url}">${extractFilename(img.url)}</span>
+      <span class="img-size ${sizeClass}">${formatSize(img.size)}</span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function renderCompareBar(cacheImg, networkImg) {
+  const bar = document.getElementById('compareBar');
+  if (!cacheImg && !networkImg) { bar.style.display = 'none'; return; }
+
+  bar.style.display = 'flex';
+
+  // Determina qual é maior
+  const cacheSize   = cacheImg   ? cacheImg.size   : 0;
+  const networkSize = networkImg ? networkImg.size  : 0;
+  const cacheWins   = cacheSize >= networkSize;
+
+  const cacheHtml = cacheImg
+    ? `<div class="side">
+        <span class="side-label cache-label">Disk Cache</span>
+        <span class="side-size cache-size">${formatSize(cacheSize)}</span>
+        <span class="side-name" title="${cacheImg.url}">${extractFilename(cacheImg.url)}</span>
+        ${cacheWins ? '<span class="winner-tag cache">RECOMENDADA</span>' : ''}
+       </div>`
+    : `<div class="side"><span class="side-label cache-label">Disk Cache</span>
+       <span style="color:#555;font-size:11px">Nenhuma</span></div>`;
+
+  const networkHtml = networkImg
+    ? `<div class="side">
+        <span class="side-label network-label">Rede</span>
+        <span class="side-size network-size">${formatSize(networkSize)}</span>
+        <span class="side-name" title="${networkImg.url}">${extractFilename(networkImg.url)}</span>
+        ${!cacheWins ? '<span class="winner-tag network">RECOMENDADA</span>' : ''}
+       </div>`
+    : `<div class="side"><span class="side-label network-label">Rede</span>
+       <span style="color:#555;font-size:11px">Nenhuma</span></div>`;
+
+  bar.innerHTML = cacheHtml + '<div class="divider"></div>' + networkHtml;
+}
+
+function renderResults(allImages) {
+  const section  = document.getElementById('imageSection');
+  const empty    = document.getElementById('emptySection');
+
+  if (!allImages || allImages.length === 0) {
     section.style.display = 'none';
     empty.style.display = 'block';
     return;
@@ -56,154 +100,152 @@ function renderImageList(images) {
 
   section.style.display = 'block';
   empty.style.display = 'none';
-  counter.textContent = `${images.length} imagem(ns) encontrada(s)`;
-  list.innerHTML = '';
 
-  images.forEach((img, index) => {
-    const item = document.createElement('div');
-    item.className = 'image-item' + (index === 0 ? ' selected' : '');
-    const isLarge = img.size > 300 * 1024; // >300KB
-    item.innerHTML = `
-      <span class="img-name" title="${img.url}">${extractFilename(img.url)}</span>
-      <span class="img-size ${isLarge ? 'large' : ''}">${formatSize(img.size)}</span>
-    `;
-    item.addEventListener('click', () => selectImage(img.url, item));
-    list.appendChild(item);
-  });
+  const cacheImages   = allImages.filter((i) => i.source === 'disk_cache').sort((a, b) => b.size - a.size);
+  const networkImages = allImages.filter((i) => i.source !== 'disk_cache').sort((a, b) => b.size - a.size);
 
-  // Seleciona automaticamente a maior (primeira)
-  if (images.length > 0) {
-    selectImage(images[0].url, list.firstChild);
+  topCacheImage   = cacheImages[0]   || null;
+  topNetworkImage = networkImages[0] || null;
+
+  // Barra de comparação (tops das duas fontes)
+  renderCompareBar(topCacheImage, topNetworkImage);
+
+  // Grupo disk cache
+  const cacheGroup = document.getElementById('cacheGroup');
+  if (cacheImages.length > 0) {
+    cacheGroup.style.display = 'block';
+    document.getElementById('cacheBadge').textContent = cacheImages.length;
+    renderGroup('cacheList', cacheImages, 'large');
+    document.getElementById('btnDownloadCache').disabled = false;
+  } else {
+    cacheGroup.style.display = 'none';
+  }
+
+  // Grupo rede
+  const networkGroup = document.getElementById('networkGroup');
+  if (networkImages.length > 0) {
+    networkGroup.style.display = 'block';
+    document.getElementById('networkBadge').textContent = networkImages.length;
+    renderGroup('networkList', networkImages, 'network');
+    document.getElementById('btnDownloadNetwork').disabled = false;
+  } else {
+    networkGroup.style.display = 'none';
   }
 }
 
-function selectImage(url, element) {
-  selectedImageUrl = url;
-  document.querySelectorAll('.image-item').forEach((el) => el.classList.remove('selected'));
-  if (element) element.classList.add('selected');
-  document.getElementById('btnDownload').disabled = false;
-}
-
-// ─── Comunicação com a aba ────────────────────────────────────────────────────
+// ─── Comunicação ──────────────────────────────────────────────────────────────
 
 async function getCurrentTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
 }
 
-async function sendToContent(tabId, message) {
+function sendToContent(tabId, message) {
   return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve(null);
-      } else {
-        resolve(response);
-      }
+    chrome.tabs.sendMessage(tabId, message, (r) => {
+      resolve(chrome.runtime.lastError ? null : r);
     });
   });
 }
 
-async function sendToBackground(message) {
+function sendToBackground(message) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve(null);
-      } else {
-        resolve(response);
-      }
+    chrome.runtime.sendMessage(message, (r) => {
+      resolve(chrome.runtime.lastError ? null : r);
     });
   });
+}
+
+async function downloadImage(img, label) {
+  if (!img) return;
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+  const filename = `valor_economico_${label}_${timestamp}.jpg`;
+  const result = await sendToBackground({ action: 'downloadImage', url: img.url, filename });
+  if (result && result.success) {
+    setStatus(`Download (${label}) iniciado!`, 'ok');
+  } else {
+    chrome.tabs.create({ url: img.url });
+    setStatus('Imagem aberta em nova aba — salve como JPG.', 'warn');
+  }
 }
 
 // ─── Processo principal ───────────────────────────────────────────────────────
 
 async function runCapture() {
   const tab = await getCurrentTab();
-  if (!tab) {
-    setStatus('Erro: nenhuma aba ativa encontrada.', 'error');
-    return;
-  }
+  if (!tab) { setStatus('Nenhuma aba ativa encontrada.', 'error'); return; }
 
   currentTabId = tab.id;
-  const isPressReader = tab.url && tab.url.includes('pressreader.com');
-
-  if (!isPressReader) {
+  if (!tab.url || !tab.url.includes('pressreader.com')) {
     setStatus('Abra a página do Valor Econômico no PressReader primeiro.', 'warn');
     return;
   }
 
-  // Desabilita botão durante o processo
   const btn = document.getElementById('btnCapture');
   btn.disabled = true;
 
   try {
-    // 1. Inicia captura no background
     setStatus('Iniciando monitoramento de rede...', 'info', true);
     await sendToBackground({ action: 'clearImages', tabId: currentTabId });
     await sendToBackground({ action: 'startCapture', tabId: currentTabId });
 
-    // 2. Verifica se o content script está ativo
+    // Garante content script ativo
     const ping = await sendToContent(currentTabId, { action: 'ping' });
-
     if (!ping) {
-      // Tenta injetar o script manualmente
       setStatus('Injetando script na página...', 'info', true);
-      await chrome.scripting.executeScript({
-        target: { tabId: currentTabId },
-        files: ['content.js'],
-      });
+      await chrome.scripting.executeScript({ target: { tabId: currentTabId }, files: ['content.js'] });
       await new Promise((r) => setTimeout(r, 500));
     }
 
-    // 3. Aplica zoom máximo
     setStatus('Aplicando zoom máximo no visualizador...', 'info', true);
     await sendToContent(currentTabId, { action: 'applyMaxZoom' });
     await new Promise((r) => setTimeout(r, 2000));
 
-    // 4. Scroll para carregar todas as imagens
     setStatus('Percorrendo a página para carregar imagens...', 'info', true);
     await sendToContent(currentTabId, { action: 'scrollAndLoad' });
     await new Promise((r) => setTimeout(r, 3000));
 
-    // 5. Coleta imagens do background (via webRequest)
     setStatus('Coletando imagens capturadas...', 'info', true);
-    const bgResult = await sendToBackground({ action: 'getImages', tabId: currentTabId });
-    let images = bgResult ? bgResult.images || [] : [];
 
-    // 6. Complementa com Performance API (content script)
+    // Imagens capturadas via webRequest (background)
+    const bgResult = await sendToBackground({ action: 'getImages', tabId: currentTabId });
+    const bgImages = (bgResult && bgResult.images) ? bgResult.images : [];
+
+    // Imagens via Performance API (inclui disk cache com source correto)
     const perfResult = await sendToContent(currentTabId, { action: 'getPerformanceImages' });
-    if (perfResult && perfResult.images) {
-      // Merge: adiciona URLs não presentes ainda
-      const existingUrls = new Set(images.map((i) => i.url));
-      for (const img of perfResult.images) {
-        if (!existingUrls.has(img.url)) {
-          images.push(img);
-        } else {
-          // Atualiza tamanho se Performance API tem info melhor
-          const existing = images.find((i) => i.url === img.url);
-          if (existing && img.size > existing.size) {
-            existing.size = img.size;
-          }
-        }
+    const perfImages = (perfResult && perfResult.images) ? perfResult.images : [];
+
+    // Merge: Performance API tem precedência para source e tamanho real de cache
+    const merged = {};
+    for (const img of bgImages) {
+      merged[img.url] = { ...img, source: img.source || 'network' };
+    }
+    for (const img of perfImages) {
+      if (!merged[img.url]) {
+        merged[img.url] = img;
+      } else {
+        // Performance API sabe se veio de cache; atualiza source e tamanho se melhor
+        merged[img.url].source = img.source;
+        if (img.size > merged[img.url].size) merged[img.url].size = img.size;
       }
     }
 
-    // 7. Para a captura e ordena por tamanho
     await sendToBackground({ action: 'stopCapture', tabId: currentTabId });
-    images.sort((a, b) => b.size - a.size);
-    capturedImages = images;
 
-    if (images.length > 0) {
-      const largest = images[0];
+    const allImages = Object.values(merged).filter((i) => i.size > 0);
+
+    if (allImages.length > 0) {
+      const cacheCount   = allImages.filter((i) => i.source === 'disk_cache').length;
+      const networkCount = allImages.length - cacheCount;
       setStatus(
-        `${images.length} imagem(ns) capturada(s) · Maior: ${formatSize(largest.size)}`,
+        `${allImages.length} imagens · ${cacheCount} cache · ${networkCount} rede`,
         'ok'
       );
     } else {
-      setStatus('Nenhuma imagem de tamanho relevante encontrada.', 'warn');
+      setStatus('Nenhuma imagem encontrada.', 'warn');
     }
 
-    renderImageList(images);
+    renderResults(allImages);
   } catch (err) {
     setStatus('Erro inesperado: ' + err.message, 'error');
     console.error(err);
@@ -212,52 +254,28 @@ async function runCapture() {
   }
 }
 
-async function downloadSelected() {
-  if (!selectedImageUrl) return;
-
-  const btn = document.getElementById('btnDownload');
-  btn.disabled = true;
-  setStatus('Baixando imagem...', 'info', true);
-
-  // Gera nome de arquivo com timestamp
-  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-  const filename = `valor_economico_${timestamp}.jpg`;
-
-  const result = await sendToBackground({
-    action: 'downloadImage',
-    url: selectedImageUrl,
-    filename,
-  });
-
-  if (result && result.success) {
-    setStatus('Download iniciado! Verifique sua pasta de downloads.', 'ok');
-  } else {
-    // Fallback: abre a URL diretamente
-    chrome.tabs.create({ url: selectedImageUrl });
-    setStatus('Imagem aberta em nova aba (salve como JPG).', 'warn');
-  }
-
-  setTimeout(() => {
-    btn.disabled = false;
-  }, 2000);
-}
-
 // ─── Event listeners ─────────────────────────────────────────────────────────
 
 document.getElementById('btnCapture').addEventListener('click', runCapture);
 
-document.getElementById('btnDownload').addEventListener('click', downloadSelected);
+document.getElementById('btnDownloadCache').addEventListener('click', () => {
+  downloadImage(topCacheImage, 'cache');
+});
+
+document.getElementById('btnDownloadNetwork').addEventListener('click', () => {
+  downloadImage(topNetworkImage, 'rede');
+});
 
 document.getElementById('btnClear').addEventListener('click', async () => {
-  if (currentTabId) {
-    await sendToBackground({ action: 'clearImages', tabId: currentTabId });
-  }
-  capturedImages = [];
-  selectedImageUrl = null;
+  if (currentTabId) await sendToBackground({ action: 'clearImages', tabId: currentTabId });
+  topCacheImage = null;
+  topNetworkImage = null;
   document.getElementById('imageSection').style.display = 'none';
   document.getElementById('emptySection').style.display = 'none';
   setStatus('Dados limpos. Pronto para nova captura.', 'info');
   document.getElementById('btnCapture').disabled = false;
+  document.getElementById('btnDownloadCache').disabled = true;
+  document.getElementById('btnDownloadNetwork').disabled = true;
 });
 
 document.getElementById('btnRetry').addEventListener('click', runCapture);

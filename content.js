@@ -153,13 +153,21 @@
           !e.name.includes('logo');
         return isImage && notUI;
       })
-      .map((e) => ({
-        url: e.name,
-        size: e.transferSize || e.encodedBodySize || 0,
-        decodedSize: e.decodedBodySize || 0,
-        duration: e.duration,
-      }))
-      .sort((a, b) => b.size - a.size);
+      .map((e) => {
+        // transferSize > 0  → veio da rede (bytes reais trafegados)
+        // transferSize === 0 e decodedBodySize > 0 → veio do disk cache
+        const fromCache = e.transferSize === 0 && e.decodedBodySize > 0;
+        const size = fromCache
+          ? e.decodedBodySize          // tamanho real do arquivo em cache
+          : e.transferSize || e.encodedBodySize || 0;
+        return {
+          url: e.name,
+          size,
+          source: fromCache ? 'disk_cache' : 'network',
+          duration: e.duration,
+        };
+      })
+      .filter((e) => e.size > 0);
   }
 
   // ─── Listener de mensagens do popup ──────────────────────────────────────

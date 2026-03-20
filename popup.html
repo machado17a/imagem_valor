@@ -5,180 +5,185 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Extrator de Imagens - Valor Econômico</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
-      width: 340px;
+      width: 360px;
       min-height: 200px;
-      padding: 16px;
+      padding: 14px;
     }
 
     header {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       border-bottom: 1px solid #333;
-      padding-bottom: 12px;
+      padding-bottom: 10px;
     }
+    header h1 { font-size: 14px; font-weight: 600; color: #f0c040; line-height: 1.3; }
+    header p  { font-size: 11px; color: #888; margin-top: 2px; }
 
-    header h1 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #f0c040;
-      line-height: 1.3;
-    }
-
-    header p {
-      font-size: 11px;
-      color: #888;
-      margin-top: 2px;
-    }
-
+    /* ── status bar ── */
     .status-bar {
       background: #16213e;
       border-radius: 6px;
-      padding: 8px 12px;
+      padding: 7px 12px;
       margin-bottom: 12px;
       font-size: 12px;
       color: #aaa;
-      min-height: 36px;
+      min-height: 34px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
+    .status-bar.info  { border-left: 3px solid #4a9eff; color: #c0d8ff; }
+    .status-bar.ok    { border-left: 3px solid #4caf50; color: #b8f0b8; }
+    .status-bar.warn  { border-left: 3px solid #ff9800; color: #ffe0b2; }
+    .status-bar.error { border-left: 3px solid #f44336; color: #ffcdd2; }
 
-    .status-bar.info   { border-left: 3px solid #4a9eff; color: #c0d8ff; }
-    .status-bar.ok     { border-left: 3px solid #4caf50; color: #b8f0b8; }
-    .status-bar.warn   { border-left: 3px solid #ff9800; color: #ffe0b2; }
-    .status-bar.error  { border-left: 3px solid #f44336; color: #ffcdd2; }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    /* ── dot indicators ── */
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .dot.green  { background: #4caf50; animation: pulse 1.5s infinite; }
     .dot.blue   { background: #4a9eff; }
     .dot.orange { background: #ff9800; }
     .dot.red    { background: #f44336; }
     .dot.gray   { background: #666; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
+    /* ── buttons ── */
     .btn {
-      display: block;
-      width: 100%;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
+      display: block; width: 100%;
+      padding: 9px 16px;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      transition: opacity .15s, transform .1s;
       text-align: center;
       margin-bottom: 8px;
     }
-
-    .btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .btn:not(:disabled):hover  { opacity: 0.88; }
-    .btn:not(:disabled):active { transform: scale(0.98); }
-
+    .btn:disabled           { opacity: .4; cursor: not-allowed; }
+    .btn:not(:disabled):hover  { opacity: .88; }
+    .btn:not(:disabled):active { transform: scale(.98); }
     .btn-primary   { background: #f0c040; color: #1a1a2e; }
     .btn-secondary { background: #2a2a4e; color: #ccc; border: 1px solid #444; }
     .btn-success   { background: #2e7d32; color: #fff; }
-    .btn-danger    { background: #c62828; color: #fff; }
+    .btn-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .btn-row .btn { margin-bottom: 0; }
 
+    /* ── group headers ── */
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+    .group-header.cache   { background: #1b2e1b; color: #7ecf7e; border: 1px solid #2e5e2e; }
+    .group-header.network { background: #1b1e30; color: #7eaef0; border: 1px solid #2e3e6e; }
+    .group-header .badge {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .group-header.cache   .badge { background: #2e5e2e; color: #a0e0a0; }
+    .group-header.network .badge { background: #2e3e6e; color: #a0c0f0; }
+
+    /* ── comparison row ── */
+    .compare-bar {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      background: #12122a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      font-size: 11px;
+    }
+    .compare-bar .side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .compare-bar .side-label { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
+    .compare-bar .side-label.cache-label   { color: #7ecf7e; }
+    .compare-bar .side-label.network-label { color: #7eaef0; }
+    .compare-bar .side-size { font-size: 16px; font-weight: 700; }
+    .compare-bar .side-size.cache-size   { color: #4caf50; }
+    .compare-bar .side-size.network-size { color: #4a9eff; }
+    .compare-bar .side-name { color: #666; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .compare-bar .divider { width: 1px; background: #333; margin: 0 2px; }
+    .compare-bar .winner-tag {
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 8px;
+      font-weight: 700;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    .winner-tag.cache   { background: #2e5e2e; color: #a0e0a0; }
+    .winner-tag.network { background: #2e3e6e; color: #a0c0f0; }
+
+    /* ── image list ── */
     .image-list {
       background: #16213e;
       border-radius: 6px;
       overflow: hidden;
-      margin-bottom: 12px;
-      max-height: 200px;
+      margin-bottom: 8px;
+      max-height: 130px;
       overflow-y: auto;
     }
-
     .image-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 7px 12px;
       border-bottom: 1px solid #222;
       font-size: 11px;
       cursor: pointer;
-      transition: background 0.1s;
+      transition: background .1s;
     }
-
     .image-item:last-child { border-bottom: none; }
-    .image-item:hover       { background: #1e2d50; }
-    .image-item.selected    { background: #1e3a5f; border-left: 3px solid #f0c040; }
-
-    .image-item .img-name {
+    .image-item:hover      { background: #1e2d50; }
+    .image-item.selected   { background: #1e3a5f; border-left: 3px solid #f0c040; }
+    .image-item .img-name  {
       flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: #ccc;
-      margin-right: 8px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: #ccc; margin-right: 8px;
+    }
+    .image-item .img-size          { font-weight: 600; color: #f0c040; white-space: nowrap; }
+    .image-item .img-size.large    { color: #4caf50; }
+    .image-item .img-size.network  { color: #4a9eff; }
+
+    .section-label {
+      font-size: 10px; color: #666;
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 4px; margin-top: 10px;
     }
 
-    .image-item .img-size {
-      font-weight: 600;
-      color: #f0c040;
-      white-space: nowrap;
-    }
-
-    .image-item .img-size.large { color: #4caf50; }
-
-    .section-title {
-      font-size: 11px;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-      margin-top: 4px;
-    }
-
+    /* ── spinner ── */
     .spinner {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid rgba(255,255,255,0.2);
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,.2);
       border-top-color: #f0c040;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin .7s linear infinite;
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .empty-state {
-      text-align: center;
-      padding: 24px 16px;
-      color: #555;
-      font-size: 12px;
-    }
-
-    .counter {
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 6px;
-      text-align: right;
-    }
+    .empty-state { text-align: center; padding: 20px 16px; color: #555; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -194,21 +199,42 @@
     <span>Aguardando ação...</span>
   </div>
 
-  <!-- Passo 1: Capturar -->
   <button id="btnCapture" class="btn btn-primary">
     ▶ Iniciar Captura (Zoom + Carregar Imagens)
   </button>
 
-  <!-- Lista de imagens capturadas -->
+  <!-- Resultado -->
   <div id="imageSection" style="display:none;">
-    <p class="section-title">Imagens Capturadas</p>
-    <div id="imageCounter" class="counter"></div>
-    <div id="imageList" class="image-list"></div>
-    <button id="btnDownload" class="btn btn-success" disabled>
-      ⬇ Baixar Imagem Selecionada
-    </button>
-    <button id="btnClear" class="btn btn-secondary">
-      🗑 Limpar e Recapturar
+
+    <!-- Comparação entre as tops das duas fontes -->
+    <div id="compareBar" class="compare-bar" style="display:none;"></div>
+
+    <!-- Grupo: Disk Cache -->
+    <div id="cacheGroup" style="display:none;">
+      <div class="group-header cache">
+        <span>Disk Cache</span>
+        <span class="badge" id="cacheBadge">0</span>
+      </div>
+      <div id="cacheList" class="image-list"></div>
+      <button id="btnDownloadCache" class="btn btn-success" disabled>
+        ⬇ Baixar maior do Cache
+      </button>
+    </div>
+
+    <!-- Grupo: Rede -->
+    <div id="networkGroup" style="display:none;">
+      <div class="group-header network">
+        <span>Rede (Network)</span>
+        <span class="badge" id="networkBadge">0</span>
+      </div>
+      <div id="networkList" class="image-list"></div>
+      <button id="btnDownloadNetwork" class="btn btn-secondary" disabled>
+        ⬇ Baixar maior da Rede
+      </button>
+    </div>
+
+    <button id="btnClear" class="btn btn-secondary" style="margin-top:6px;">
+      Limpar e Recapturar
     </button>
   </div>
 
