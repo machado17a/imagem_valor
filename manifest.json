@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Valor Econômico - Extrator de Imagens",
+  "version": "1.0",
+  "description": "Extrai imagens de alta resolução do Valor Econômico no PressReader",
+  "permissions": [
+    "webRequest",
+    "downloads",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://valoreconomico.pressreader.com/*",
+    "*://*.pressreader.com/*",
+    "*://*.presscdn.com/*",
+    "*://*.pressdisplay.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Extrator de Imagens - Valor Econômico"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://valoreconomico.pressreader.com/*",
+        "*://*.pressreader.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

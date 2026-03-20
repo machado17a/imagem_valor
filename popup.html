@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extrator de Imagens - Valor Econômico</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      width: 340px;
+      min-height: 200px;
+      padding: 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 12px;
+    }
+
+    header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0c040;
+      line-height: 1.3;
+    }
+
+    header p {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      background: #16213e;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #aaa;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-bar.info   { border-left: 3px solid #4a9eff; color: #c0d8ff; }
+    .status-bar.ok     { border-left: 3px solid #4caf50; color: #b8f0b8; }
+    .status-bar.warn   { border-left: 3px solid #ff9800; color: #ffe0b2; }
+    .status-bar.error  { border-left: 3px solid #f44336; color: #ffcdd2; }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot.green  { background: #4caf50; animation: pulse 1.5s infinite; }
+    .dot.blue   { background: #4a9eff; }
+    .dot.orange { background: #ff9800; }
+    .dot.red    { background: #f44336; }
+    .dot.gray   { background: #666; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn:not(:disabled):hover  { opacity: 0.88; }
+    .btn:not(:disabled):active { transform: scale(0.98); }
+
+    .btn-primary   { background: #f0c040; color: #1a1a2e; }
+    .btn-secondary { background: #2a2a4e; color: #ccc; border: 1px solid #444; }
+    .btn-success   { background: #2e7d32; color: #fff; }
+    .btn-danger    { background: #c62828; color: #fff; }
+
+    .image-list {
+      background: #16213e;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .image-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid #222;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .image-item:last-child { border-bottom: none; }
+    .image-item:hover       { background: #1e2d50; }
+    .image-item.selected    { background: #1e3a5f; border-left: 3px solid #f0c040; }
+
+    .image-item .img-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #ccc;
+      margin-right: 8px;
+    }
+
+    .image-item .img-size {
+      font-weight: 600;
+      color: #f0c040;
+      white-space: nowrap;
+    }
+
+    .image-item .img-size.large { color: #4caf50; }
+
+    .section-title {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      margin-top: 4px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #f0c040;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 16px;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .counter {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Extrator de Imagens</h1>
+      <p>Valor Econômico · PressReader</p>
+    </div>
+  </header>
+
+  <div id="statusBar" class="status-bar">
+    <span class="dot gray"></span>
+    <span>Aguardando ação...</span>
+  </div>
+
+  <!-- Passo 1: Capturar -->
+  <button id="btnCapture" class="btn btn-primary">
+    ▶ Iniciar Captura (Zoom + Carregar Imagens)
+  </button>
+
+  <!-- Lista de imagens capturadas -->
+  <div id="imageSection" style="display:none;">
+    <p class="section-title">Imagens Capturadas</p>
+    <div id="imageCounter" class="counter"></div>
+    <div id="imageList" class="image-list"></div>
+    <button id="btnDownload" class="btn btn-success" disabled>
+      ⬇ Baixar Imagem Selecionada
+    </button>
+    <button id="btnClear" class="btn btn-secondary">
+      🗑 Limpar e Recapturar
+    </button>
+  </div>
+
+  <div id="emptySection" style="display:none;">
+    <div class="empty-state">
+      Nenhuma imagem encontrada.<br/>Tente clicar em "Iniciar Captura" novamente.
+    </div>
+    <button id="btnRetry" class="btn btn-secondary">Tentar novamente</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
