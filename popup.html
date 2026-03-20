@@ -184,6 +184,18 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .empty-state { text-align: center; padding: 20px 16px; color: #555; font-size: 12px; }
+
+    .page1-notice {
+      background: #1e1e10;
+      border: 1px solid #5a4a00;
+      border-left: 3px solid #f0c040;
+      border-radius: 5px;
+      padding: 7px 10px;
+      font-size: 11px;
+      color: #c8a800;
+      margin-bottom: 10px;
+    }
+    .page1-notice strong { color: #f0c040; }
   </style>
 </head>
 <body>
@@ -199,8 +211,12 @@
     <span>Aguardando ação...</span>
   </div>
 
+  <div class="page1-notice">
+    Certifique-se de estar visualizando a <strong>página 1</strong> no PressReader antes de iniciar.
+  </div>
+
   <button id="btnCapture" class="btn btn-primary">
-    ▶ Iniciar Captura (Zoom + Carregar Imagens)
+    ▶ Iniciar Captura — Página 1
   </button>
 
   <!-- Resultado -->

@@ -4,8 +4,8 @@
 
 // ─── Estado ──────────────────────────────────────────────────────────────────
 let currentTabId = null;
-let topCacheImage = null;    // maior imagem do disk cache
-let topNetworkImage = null;  // maior imagem da rede
+let topCacheImage = null;
+let topNetworkImage = null;
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 
@@ -60,7 +60,6 @@ function renderCompareBar(cacheImg, networkImg) {
 
   bar.style.display = 'flex';
 
-  // Determina qual é maior
   const cacheSize   = cacheImg   ? cacheImg.size   : 0;
   const networkSize = networkImg ? networkImg.size  : 0;
   const cacheWins   = cacheSize >= networkSize;
@@ -89,8 +88,8 @@ function renderCompareBar(cacheImg, networkImg) {
 }
 
 function renderResults(allImages) {
-  const section  = document.getElementById('imageSection');
-  const empty    = document.getElementById('emptySection');
+  const section = document.getElementById('imageSection');
+  const empty   = document.getElementById('emptySection');
 
   if (!allImages || allImages.length === 0) {
     section.style.display = 'none';
@@ -107,10 +106,8 @@ function renderResults(allImages) {
   topCacheImage   = cacheImages[0]   || null;
   topNetworkImage = networkImages[0] || null;
 
-  // Barra de comparação (tops das duas fontes)
   renderCompareBar(topCacheImage, topNetworkImage);
 
-  // Grupo disk cache
   const cacheGroup = document.getElementById('cacheGroup');
   if (cacheImages.length > 0) {
     cacheGroup.style.display = 'block';
@@ -121,7 +118,6 @@ function renderResults(allImages) {
     cacheGroup.style.display = 'none';
   }
 
-  // Grupo rede
   const networkGroup = document.getElementById('networkGroup');
   if (networkImages.length > 0) {
     networkGroup.style.display = 'block';
@@ -185,37 +181,50 @@ async function runCapture() {
   btn.disabled = true;
 
   try {
-    setStatus('Iniciando monitoramento de rede...', 'info', true);
+    // 1. Garante content script ativo
+    setStatus('Conectando ao visualizador...', 'info', true);
+    let ping = await sendToContent(currentTabId, { action: 'ping' });
+    if (!ping) {
+      await chrome.scripting.executeScript({ target: { tabId: currentTabId }, files: ['content.js'] });
+      await new Promise((r) => setTimeout(r, 600));
+    }
+
+    // 2. Tela cheia no visualizador do PressReader
+    setStatus('Expandindo visualizador para tela cheia (pág. 1)...', 'info', true);
+    await sendToContent(currentTabId, { action: 'enterFullscreen' });
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // 3. Limpa o buffer de performance para garantir leitura limpa nesta sessão
+    //    (resolve o problema de "sumiu depois de abrir DevTools")
+    await sendToContent(currentTabId, { action: 'clearPerformanceTiming' });
+
+    // 4. Inicia monitoramento de rede (webRequest)
     await sendToBackground({ action: 'clearImages', tabId: currentTabId });
     await sendToBackground({ action: 'startCapture', tabId: currentTabId });
 
-    // Garante content script ativo
-    const ping = await sendToContent(currentTabId, { action: 'ping' });
-    if (!ping) {
-      setStatus('Injetando script na página...', 'info', true);
-      await chrome.scripting.executeScript({ target: { tabId: currentTabId }, files: ['content.js'] });
-      await new Promise((r) => setTimeout(r, 500));
-    }
-
-    setStatus('Aplicando zoom máximo no visualizador...', 'info', true);
+    // 5. Zoom: sai do máximo → vai ao mínimo → vai ao máximo novamente
+    //    Isso força o viewer a re-solicitar as imagens em alta resolução,
+    //    garantindo que apareçam no buffer de performance mesmo em re-execuções.
+    setStatus('Aplicando zoom máximo na página 1...', 'info', true);
     await sendToContent(currentTabId, { action: 'applyMaxZoom' });
+    // applyMaxZoom já aguarda internamente; damos mais uma margem
+    await new Promise((r) => setTimeout(r, 1500));
+
+    // 6. Scroll para garantir que todas as partes da página 1 são carregadas
+    setStatus('Carregando toda a página 1...', 'info', true);
+    await sendToContent(currentTabId, { action: 'scrollAndLoad' });
     await new Promise((r) => setTimeout(r, 2000));
 
-    setStatus('Percorrendo a página para carregar imagens...', 'info', true);
-    await sendToContent(currentTabId, { action: 'scrollAndLoad' });
-    await new Promise((r) => setTimeout(r, 3000));
+    // 7. Coleta resultados
+    setStatus('Coletando imagens da página 1...', 'info', true);
 
-    setStatus('Coletando imagens capturadas...', 'info', true);
+    const bgResult  = await sendToBackground({ action: 'getImages', tabId: currentTabId });
+    const bgImages  = (bgResult && bgResult.images) ? bgResult.images : [];
 
-    // Imagens capturadas via webRequest (background)
-    const bgResult = await sendToBackground({ action: 'getImages', tabId: currentTabId });
-    const bgImages = (bgResult && bgResult.images) ? bgResult.images : [];
-
-    // Imagens via Performance API (inclui disk cache com source correto)
     const perfResult = await sendToContent(currentTabId, { action: 'getPerformanceImages' });
     const perfImages = (perfResult && perfResult.images) ? perfResult.images : [];
 
-    // Merge: Performance API tem precedência para source e tamanho real de cache
+    // Merge: Performance API tem precedência para source (cache vs rede)
     const merged = {};
     for (const img of bgImages) {
       merged[img.url] = { ...img, source: img.source || 'network' };
@@ -224,7 +233,6 @@ async function runCapture() {
       if (!merged[img.url]) {
         merged[img.url] = img;
       } else {
-        // Performance API sabe se veio de cache; atualiza source e tamanho se melhor
         merged[img.url].source = img.source;
         if (img.size > merged[img.url].size) merged[img.url].size = img.size;
       }
@@ -238,11 +246,11 @@ async function runCapture() {
       const cacheCount   = allImages.filter((i) => i.source === 'disk_cache').length;
       const networkCount = allImages.length - cacheCount;
       setStatus(
-        `${allImages.length} imagens · ${cacheCount} cache · ${networkCount} rede`,
+        `Pág. 1 · ${allImages.length} imagens · ${cacheCount} cache · ${networkCount} rede`,
         'ok'
       );
     } else {
-      setStatus('Nenhuma imagem encontrada.', 'warn');
+      setStatus('Nenhuma imagem encontrada. Tente novamente.', 'warn');
     }
 
     renderResults(allImages);
