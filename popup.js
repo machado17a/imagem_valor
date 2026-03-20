@@ -189,20 +189,15 @@ async function runCapture() {
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    // 2. Tela cheia no visualizador do PressReader
-    setStatus('Expandindo visualizador para tela cheia (pág. 1)...', 'info', true);
-    await sendToContent(currentTabId, { action: 'enterFullscreen' });
-    await new Promise((r) => setTimeout(r, 1000));
-
-    // 3. Limpa o buffer de performance para garantir leitura limpa nesta sessão
+    // 2. Limpa o buffer de performance para garantir leitura limpa nesta sessão
     //    (resolve o problema de "sumiu depois de abrir DevTools")
     await sendToContent(currentTabId, { action: 'clearPerformanceTiming' });
 
-    // 4. Inicia monitoramento de rede (webRequest)
+    // 3. Inicia monitoramento de rede (webRequest)
     await sendToBackground({ action: 'clearImages', tabId: currentTabId });
     await sendToBackground({ action: 'startCapture', tabId: currentTabId });
 
-    // 5. Zoom: sai do máximo → vai ao mínimo → vai ao máximo novamente
+    // 4. Zoom: sai do máximo → vai ao mínimo → vai ao máximo novamente
     //    Isso força o viewer a re-solicitar as imagens em alta resolução,
     //    garantindo que apareçam no buffer de performance mesmo em re-execuções.
     setStatus('Aplicando zoom máximo na página 1...', 'info', true);
@@ -210,12 +205,12 @@ async function runCapture() {
     // applyMaxZoom já aguarda internamente; damos mais uma margem
     await new Promise((r) => setTimeout(r, 1500));
 
-    // 6. Scroll para garantir que todas as partes da página 1 são carregadas
+    // 5. Scroll para garantir que todas as partes da página 1 são carregadas
     setStatus('Carregando toda a página 1...', 'info', true);
     await sendToContent(currentTabId, { action: 'scrollAndLoad' });
     await new Promise((r) => setTimeout(r, 2000));
 
-    // 7. Coleta resultados
+    // 6. Coleta resultados
     setStatus('Coletando imagens da página 1...', 'info', true);
 
     const bgResult  = await sendToBackground({ action: 'getImages', tabId: currentTabId });
