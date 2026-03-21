@@ -180,12 +180,13 @@
       Abaixo da 1ª ação, toque em <b>"+"</b> ou <b>"Adicionar ação"</b> →
       pesquise <b>"Executar JavaScript"</b> →
       selecione <b>"Executar JavaScript na Página Web"</b>.<br/><br/>
-      Toque no campo <b>Script</b> →
-      selecione tudo e <b>apague</b>.<br/><br/>
-      Toque e segure o campo vazio →
+      ⚠️ <b>A ação vai mostrar "em [Conteúdos do URL]"</b> — isso é automático e está <b>errado</b>. Corrija assim:<br/>
+      Toque no token azul <b>"Conteúdos do URL"</b> → toque em <b>"x"</b> para remover → a ação ficará <b>"Executar JavaScript em"</b> (sem variável).<br/><br/>
+      Agora toque e segure o campo <b>Script</b> (onde está escrito "JavaScript") →
       toque em <b>"Inserir Variável"</b> →
-      selecione <b>"Conteúdo da página"</b>
-      (resultado da 1ª ação).
+      selecione <b>"Conteúdos do URL"</b>
+      (resultado da 1ª ação).<br/><br/>
+      O aviso vermelho sobre <code>completion(result)</code> vai sumir quando a variável estiver no campo certo.
     </p>
   </div>
 
