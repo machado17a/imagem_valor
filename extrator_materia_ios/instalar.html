@@ -144,10 +144,10 @@
   <h1>📰 Extrator de Matérias</h1>
   <p class="sub">Instalar no Safari iOS — Formata matérias para WhatsApp · <b>v3.0</b></p>
 
-  <!-- ===== MÉTODO RECOMENDADO: ATALHOS 2 AÇÕES (AUTO-ATUALIZA) ===== -->
-  <div class="recommended-badge">Recomendado · Auto-atualiza</div>
+  <!-- ===== MÉTODO 2 AÇÕES (NÃO FUNCIONA NO iOS) ===== -->
+  <div class="recommended-badge" style="background:#ff453a;color:#fff;">Não funciona no iOS</div>
   <div class="method-title">Via app Atalhos — 2 ações</div>
-  <p class="method-sub">Instala uma vez. Quando o código mudar, o atalho já pega a versão nova automaticamente.</p>
+  <p class="method-sub" style="color:#ff453a;">O iOS bloqueia a execução quando o script vem de uma variável. Use o método abaixo.</p>
 
   <div class="card">
     <span class="step-num">1</span>
@@ -215,18 +215,19 @@
     </p>
   </div>
 
-  <!-- ===== SEPARADOR ===== -->
-  <div class="separator"><span>Método Alternativo — Atalhos (código fixo)</span></div>
+  <!-- ===== MÉTODO RECOMENDADO: ATALHOS CÓDIGO FIXO ===== -->
+  <div class="separator"><span></span></div>
 
-  <div class="alt-title">Via Atalhos — código fixo</div>
-  <p class="alt-sub">Mais simples de configurar, mas exige re-colar o código a cada atualização</p>
+  <div class="recommended-badge">Recomendado</div>
+  <div class="method-title">Via app Atalhos — código fixo</div>
+  <p class="method-sub">Funciona em todas as versões do iOS. Copie o código e cole diretamente no campo Script do atalho.</p>
 
   <div class="card">
     <span class="step-num">1</span>
     <h2>Copiar o código</h2>
     <hr/>
     <p>Toque no botão abaixo para copiar o código JavaScript.</p>
-    <button class="copy-btn-alt" id="btnShortcuts" onclick="copiarAtalhos()">
+    <button class="copy-btn" id="btnShortcuts" onclick="copiarAtalhos()">
       Copiar código para Atalhos
     </button>
   </div>
