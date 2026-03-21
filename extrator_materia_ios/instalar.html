@@ -144,42 +144,48 @@
   <h1>📰 Extrator de Matérias</h1>
   <p class="sub">Instalar no Safari iOS — Formata matérias para WhatsApp</p>
 
-  <!-- ===== MÉTODO RECOMENDADO: ATALHOS ===== -->
-  <div class="recommended-badge">Recomendado</div>
-  <div class="method-title">Via app Atalhos</div>
-  <p class="method-sub">Funciona em todas as versões do iOS, sem restrições</p>
+  <!-- ===== MÉTODO RECOMENDADO: ATALHOS 2 AÇÕES (AUTO-ATUALIZA) ===== -->
+  <div class="recommended-badge">Recomendado · Auto-atualiza</div>
+  <div class="method-title">Via app Atalhos — 2 ações</div>
+  <p class="method-sub">Instala uma vez. Quando o código mudar, o atalho já pega a versão nova automaticamente.</p>
 
   <div class="card">
     <span class="step-num">1</span>
-    <h2>Copiar o código</h2>
+    <h2>Copiar a URL do script</h2>
     <hr/>
-    <p>Toque no botão abaixo para copiar o código JavaScript.</p>
-    <button class="copy-btn" id="btnShortcuts" onclick="copiarAtalhos()">
-      Copiar código para Atalhos
+    <p>Toque no botão abaixo para copiar o endereço do script.</p>
+    <button class="copy-btn" id="btnUrl" onclick="copiarUrl()">
+      Copiar URL do script
     </button>
   </div>
 
   <div class="card">
     <span class="step-num">2</span>
-    <h2>Criar o atalho no app Atalhos</h2>
+    <h2>1ª ação: Obter conteúdo da URL</h2>
     <hr/>
     <p>
-      Abra o app <b>Atalhos</b> (vem instalado no iOS) →
-      toque em <b>+</b> no canto superior direito.<br/><br/>
+      Abra o app <b>Atalhos</b> → toque em <b>+</b>.<br/><br/>
       Toque em <b>"Adicionar ação"</b> → pesquise
-      <b>"Executar JavaScript"</b> → selecione
-      <b>"Executar JavaScript na Página Web"</b>.
+      <b>"Obter conteúdo da URL"</b> → selecione-a.<br/><br/>
+      Toque no campo <b>URL</b> dentro da ação →
+      <b>Cole</b> a URL copiada no passo 1.
     </p>
   </div>
 
   <div class="card">
     <span class="step-num">3</span>
-    <h2>Colar o código na ação</h2>
+    <h2>2ª ação: Executar JavaScript</h2>
     <hr/>
     <p>
-      Na ação criada, toque em <b>"Script"</b> (campo de código) →
-      selecione tudo → <b>Cole</b> o código copiado no passo 1 →
-      toque em <b>OK</b>.
+      Abaixo da 1ª ação, toque em <b>"+"</b> ou <b>"Adicionar ação"</b> →
+      pesquise <b>"Executar JavaScript"</b> →
+      selecione <b>"Executar JavaScript na Página Web"</b>.<br/><br/>
+      Toque no campo <b>Script</b> →
+      selecione tudo e <b>apague</b>.<br/><br/>
+      Toque e segure o campo vazio →
+      toque em <b>"Inserir Variável"</b> →
+      selecione <b>"Conteúdo da página"</b>
+      (resultado da 1ª ação).
     </p>
   </div>
 
@@ -190,7 +196,7 @@
     <p>
       Toque no nome no topo → <b>"Renomear"</b> →
       digite <b>Extrator WhatsApp</b> → OK.<br/><br/>
-      Na barra inferior da tela, toque no ícone <b>(i)</b> (círculo com i) →
+      Na barra inferior, toque no ícone <b>(i)</b> →
       ative <b>"Mostrar ao Compartilhar"</b> →
       toque em <b>Concluído</b>.
     </p>
@@ -203,7 +209,61 @@
       Abra qualquer matéria no Safari →
       toque em <b>Compartilhar</b> (⬆️) →
       role a lista e toque em <b>"Extrator WhatsApp"</b>.<br/><br/>
-      O painel com o texto formatado aparecerá para copiar e colar no WhatsApp.
+      O painel com o texto formatado aparecerá para copiar e colar no WhatsApp.<br/><br/>
+      <b>Atualização:</b> automática — nada a fazer quando o código mudar.
+    </p>
+  </div>
+
+  <!-- ===== SEPARADOR ===== -->
+  <div class="separator"><span>Método Alternativo — Atalhos (código fixo)</span></div>
+
+  <div class="alt-title">Via Atalhos — código fixo</div>
+  <p class="alt-sub">Mais simples de configurar, mas exige re-colar o código a cada atualização</p>
+
+  <div class="card">
+    <span class="step-num">1</span>
+    <h2>Copiar o código</h2>
+    <hr/>
+    <p>Toque no botão abaixo para copiar o código JavaScript.</p>
+    <button class="copy-btn-alt" id="btnShortcuts" onclick="copiarAtalhos()">
+      Copiar código para Atalhos
+    </button>
+  </div>
+
+  <div class="card">
+    <span class="step-num">2</span>
+    <h2>Criar o atalho no app Atalhos</h2>
+    <hr/>
+    <p>
+      Abra o app <b>Atalhos</b> →
+      toque em <b>+</b> no canto superior direito.<br/><br/>
+      Toque em <b>"Adicionar ação"</b> → pesquise
+      <b>"Executar JavaScript"</b> → selecione
+      <b>"Executar JavaScript na Página Web"</b>.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="step-num">3</span>
+    <h2>Colar o código na ação</h2>
+    <hr/>
+    <p>
+      Na ação criada, toque em <b>"Script"</b> →
+      selecione tudo → <b>Cole</b> o código copiado no passo 1 →
+      toque em <b>OK</b>.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="step-num">4</span>
+    <h2>Nomear e ativar na Folha de Compartilhamento</h2>
+    <hr/>
+    <p>
+      Toque no nome no topo → <b>"Renomear"</b> →
+      digite <b>Extrator WhatsApp</b> → OK.<br/><br/>
+      Na barra inferior, toque no ícone <b>(i)</b> →
+      ative <b>"Mostrar ao Compartilhar"</b> →
+      toque em <b>Concluído</b>.
     </p>
   </div>
 
@@ -285,6 +345,12 @@ Conteúdo completo da matéria sem propagandas...</p>
     var BOOKMARKLET_CODE = 'javascript:' + _CORE
       .replace(/COMPLETION_ERR/g, '')
       .replace(/COMPLETION_OK/g,  '');
+
+    var SHORTCUTS_JS_URL = window.location.href.replace(/[^\/]+$/, '') + 'shortcuts.js';
+
+    function copiarUrl() {
+      _copiar(SHORTCUTS_JS_URL, 'btnUrl', 'Copiar URL do script');
+    }
 
     function copiarAtalhos() {
       _copiar(SHORTCUTS_CODE, 'btnShortcuts', 'Copiar código para Atalhos');
