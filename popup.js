@@ -7,6 +7,16 @@ let currentTabId = null;
 let topCacheImage = null;
 let topNetworkImage = null;
 
+function getPageNumber() {
+  const val = parseInt(document.getElementById('pageNumber').value, 10);
+  return (isNaN(val) || val < 1) ? 1 : val;
+}
+
+function updateCaptureButton() {
+  const p = getPageNumber();
+  document.getElementById('btnCapture').textContent = `▶ Iniciar Captura — Página ${p}`;
+}
+
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 
 function setStatus(message, type = 'info', loading = false) {
@@ -155,7 +165,8 @@ function sendToBackground(message) {
 async function downloadImage(img, label) {
   if (!img) return;
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-  const filename = `valor_economico_${label}_${timestamp}.jpg`;
+  const page = getPageNumber();
+  const filename = `valor_economico_pagina${page}_${label}_${timestamp}.jpg`;
   const result = await sendToBackground({ action: 'downloadImage', url: img.url, filename });
   if (result && result.success) {
     setStatus(`Download (${label}) iniciado!`, 'ok');
@@ -201,17 +212,18 @@ async function runCapture() {
     await new Promise((r) => setTimeout(r, 400));
 
     // 3. Zoom: sai do mínimo → vai ao máximo (forçando re-download das imagens)
-    setStatus('Aplicando zoom máximo na página 1...', 'info', true);
+    const page = getPageNumber();
+    setStatus(`Aplicando zoom máximo na página ${page}...`, 'info', true);
     await sendToContent(currentTabId, { action: 'applyMaxZoom' });
     await new Promise((r) => setTimeout(r, 1500));
 
-    // 4. Scroll para garantir que todas as partes da página 1 são carregadas
-    setStatus('Carregando toda a página 1...', 'info', true);
+    // 4. Scroll para garantir que todas as partes da página são carregadas
+    setStatus(`Carregando toda a página ${page}...`, 'info', true);
     await sendToContent(currentTabId, { action: 'scrollAndLoad' });
     await new Promise((r) => setTimeout(r, 2000));
 
     // 5. Para o CDP e coleta todas as imagens interceptadas
-    setStatus('Coletando imagens da página 1...', 'info', true);
+    setStatus(`Coletando imagens da página ${page}...`, 'info', true);
     const stopResult = await sendToBackground({ action: 'stopCapture', tabId: currentTabId });
     const cdpImages  = (stopResult && stopResult.images) ? stopResult.images : [];
 
@@ -221,7 +233,7 @@ async function runCapture() {
       const cacheCount   = allImages.filter((i) => i.source === 'disk_cache').length;
       const networkCount = allImages.length - cacheCount;
       setStatus(
-        `Pág. 1 · ${allImages.length} imagens · ${cacheCount} cache · ${networkCount} rede`,
+        `Pág. ${page} · ${allImages.length} imagens · ${cacheCount} cache · ${networkCount} rede`,
         'ok'
       );
     } else {
@@ -240,6 +252,21 @@ async function runCapture() {
 // ─── Event listeners ─────────────────────────────────────────────────────────
 
 document.getElementById('btnCapture').addEventListener('click', runCapture);
+
+document.getElementById('btnPageMinus').addEventListener('click', () => {
+  const input = document.getElementById('pageNumber');
+  const val = parseInt(input.value, 10) || 1;
+  if (val > 1) { input.value = val - 1; updateCaptureButton(); }
+});
+
+document.getElementById('btnPagePlus').addEventListener('click', () => {
+  const input = document.getElementById('pageNumber');
+  const val = parseInt(input.value, 10) || 1;
+  input.value = val + 1;
+  updateCaptureButton();
+});
+
+document.getElementById('pageNumber').addEventListener('input', updateCaptureButton);
 
 document.getElementById('btnDownloadCache').addEventListener('click', () => {
   downloadImage(topCacheImage, 'cache');

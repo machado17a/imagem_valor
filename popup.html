@@ -185,17 +185,58 @@
 
     .empty-state { text-align: center; padding: 20px 16px; color: #555; font-size: 12px; }
 
-    .page1-notice {
+    .page-selector {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       background: #1e1e10;
       border: 1px solid #5a4a00;
       border-left: 3px solid #f0c040;
       border-radius: 5px;
       padding: 7px 10px;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    .page-selector-label {
       font-size: 11px;
       color: #c8a800;
-      margin-bottom: 10px;
+      flex: 1;
     }
-    .page1-notice strong { color: #f0c040; }
+    .page-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-page {
+      background: #3a3000;
+      border: 1px solid #5a4a00;
+      color: #f0c040;
+      width: 26px; height: 26px;
+      border-radius: 5px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+      transition: background .15s;
+    }
+    .btn-page:hover { background: #5a4a00; }
+    .btn-page:active { background: #6a5a00; }
+    #pageNumber {
+      width: 46px;
+      background: #12120a;
+      border: 1px solid #5a4a00;
+      border-radius: 4px;
+      color: #f0c040;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      padding: 3px 4px;
+      -moz-appearance: textfield;
+    }
+    #pageNumber::-webkit-inner-spin-button,
+    #pageNumber::-webkit-outer-spin-button { -webkit-appearance: none; }
+    #pageNumber:focus { outline: 1px solid #f0c040; }
   </style>
 </head>
 <body>
@@ -211,8 +252,13 @@
     <span>Aguardando ação...</span>
   </div>
 
-  <div class="page1-notice">
-    Certifique-se de estar visualizando a <strong>página 1</strong> no PressReader antes de iniciar.
+  <div class="page-selector">
+    <span class="page-selector-label">Navegue até a página desejada no PressReader e selecione o número:</span>
+    <div class="page-controls">
+      <button class="btn-page" id="btnPageMinus">−</button>
+      <input id="pageNumber" type="number" value="1" min="1" max="999" />
+      <button class="btn-page" id="btnPagePlus">+</button>
+    </div>
   </div>
 
   <button id="btnCapture" class="btn btn-primary">
