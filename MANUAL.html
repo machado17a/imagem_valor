@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual — Extrator de Imagens · Valor Econômico</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f7f7f5;
+      color: #1a1a1a;
+      padding: 32px 16px 64px;
+    }
+    .page { max-width: 680px; margin: 0 auto; }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #1a1a2e;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 32px;
+    }
+
+    section { margin-bottom: 36px; }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #b8860b;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #f0c040;
+    }
+
+    .step-list { list-style: none; counter-reset: steps; }
+    .step-list li {
+      counter-increment: steps;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .step-list li::before {
+      content: counter(steps);
+      min-width: 26px;
+      height: 26px;
+      background: #1a1a2e;
+      color: #f0c040;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-list li p { font-size: 0.93rem; line-height: 1.55; }
+
+    code {
+      background: #eee;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.88rem;
+      font-family: "Menlo", "Consolas", monospace;
+    }
+    .highlight { color: #1a1a2e; font-weight: 600; }
+
+    .tip {
+      background: #fffbea;
+      border-left: 3px solid #f0c040;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #5a4500;
+      margin-top: 10px;
+    }
+    .tip strong { color: #b8860b; }
+
+    .warn {
+      background: #fff3f3;
+      border-left: 3px solid #e05555;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #6b1a1a;
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+    th {
+      text-align: left;
+      background: #1a1a2e;
+      color: #f0c040;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    td { padding: 8px 12px; border-bottom: 1px solid #ddd; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f5f5f0; }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .page { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Extrator de Imagens · Valor Econômico</h1>
+  <p class="subtitle">Extensão Google Chrome — Manual de instalação e uso</p>
+
+  <!-- ── INSTALAÇÃO ─────────────────────────────────────────────────── -->
+  <section>
+    <h2>Instalação</h2>
+    <ol class="step-list">
+      <li>
+        <p>
+          <span class="highlight">Descompacte</span> o arquivo ZIP em qualquer pasta do seu computador
+          (ex.: <code>Downloads\extrator-valor</code>). Não mova nem apague os arquivos depois de instalar.
+        </p>
+      </li>
+      <li>
+        <p>
+          Abra o <span class="highlight">Google Chrome</span> e digite na barra de endereço:
+          <br /><code>chrome://extensions</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          No canto superior direito da página, ative o botão
+          <span class="highlight">Modo do desenvolvedor</span>.
+        </p>
+      </li>
+      <li>
+        <p>
+          Clique em <span class="highlight">Carregar sem compactação</span> (botão que aparece no topo esquerdo).
+        </p>
+      </li>
+      <li>
+        <p>
+          Selecione a <span class="highlight">pasta descompactada</span> (aquela que contém o arquivo
+          <code>manifest.json</code>) e confirme.
+        </p>
+      </li>
+      <li>
+        <p>
+          A extensão <strong>"Extrator de Imagens — Valor Econômico"</strong> aparecerá na lista.
+          Para fixá-la na barra do Chrome, clique no ícone de quebra-cabeça (🧩) ao lado da barra
+          de endereço e fixe a extensão.
+        </p>
+      </li>
+    </ol>
+
+    <div class="tip">
+      <strong>Dica:</strong> a pasta precisa permanecer no lugar após a instalação. Se movê-la,
+      repita os passos 4 e 5.
+    </div>
+  </section>
+
+  <!-- ── COMO USAR ──────────────────────────────────────────────────── -->
+  <section>
+    <h2>Como usar</h2>
+    <ol class="step-list">
+      <li>
+        <p>
+          Acesse o PressReader e abra a edição do
+          <span class="highlight">Valor Econômico</span> normalmente no Chrome.
+        </p>
+      </li>
+      <li>
+        <p>
+          No visualizador, <span class="highlight">navegue até a página que deseja capturar</span>
+          usando os controles normais do PressReader (setas, número de página, etc.).
+        </p>
+      </li>
+      <li>
+        <p>
+          Clique no ícone da extensão na barra do Chrome para abrir o painel.
+        </p>
+      </li>
+      <li>
+        <p>
+          No painel, ajuste o <span class="highlight">número da página</span> usando os botões
+          <strong>−</strong> e <strong>+</strong> (ou digite diretamente) para corresponder à
+          página que está visível no PressReader. Isso serve para nomear corretamente os arquivos baixados.
+        </p>
+      </li>
+      <li>
+        <p>
+          Clique em <span class="highlight">▶ Iniciar Captura</span>. A extensão vai:
+          <br />— ativar o monitor de rede interno
+          <br />— aplicar zoom máximo para forçar o carregamento das imagens em alta resolução
+          <br />— varrer a página para garantir que todas as partes sejam carregadas
+        </p>
+        <div class="tip"><strong>Aguarde:</strong> o processo leva de 5 a 10 segundos.</div>
+      </li>
+      <li>
+        <p>
+          Quando terminar, o painel exibe as imagens encontradas em dois grupos:
+        </p>
+      </li>
+    </ol>
+
+    <table>
+      <thead>
+        <tr><th>Grupo</th><th>O que é</th><th>Quando usar</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Disk Cache</strong></td>
+          <td>Imagens que o navegador já tinha salvo localmente (cache)</td>
+          <td>Geralmente a maior e mais completa — <strong>use esta primeiro</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Rede</strong></td>
+          <td>Imagens baixadas em tempo real durante a captura</td>
+          <td>Use se o Cache estiver vazio ou a imagem parecer menor</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:.9rem;margin-top:12px;">
+      A extensão indica qual é a <strong>RECOMENDADA</strong> (a de maior tamanho entre as duas).
+      Clique em <span class="highlight">⬇ Baixar maior do Cache</span> ou
+      <span class="highlight">⬇ Baixar maior da Rede</span> para salvar o arquivo.
+    </p>
+
+    <div class="tip">
+      <strong>Nome do arquivo:</strong> o download é salvo automaticamente como
+      <code>valor_economico_paginaX_cache_DATA.jpg</code>, onde X é o número de página selecionado.
+    </div>
+  </section>
+
+  <!-- ── SOLUÇÃO DE PROBLEMAS ───────────────────────────────────────── -->
+  <section>
+    <h2>Solução de problemas</h2>
+    <table>
+      <thead>
+        <tr><th>Problema</th><th>O que fazer</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Botão de captura não aparece / extensão sumiu</td>
+          <td>Vá em <code>chrome://extensions</code> e verifique se a extensão está ativa</td>
+        </tr>
+        <tr>
+          <td>"Nenhuma imagem encontrada"</td>
+          <td>Clique em <strong>Limpar e Recapturar</strong> e tente novamente; certifique-se de que a página do jornal está visível e totalmente carregada</td>
+        </tr>
+        <tr>
+          <td>Imagem baixada está em baixa resolução</td>
+          <td>Verifique o grupo <strong>Disk Cache</strong> — se a imagem do cache for maior, prefira ela</td>
+        </tr>
+        <tr>
+          <td>Download não inicia (aba nova abre)</td>
+          <td>O Chrome abriu a imagem em nova aba — use <em>Salvar como</em> (Ctrl+S) para baixar</td>
+        </tr>
+        <tr>
+          <td>Extensão pede para recarregar após atualização</td>
+          <td>Vá em <code>chrome://extensions</code>, clique no ícone de atualização (↻) e recarregue a página do PressReader</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warn">
+      A extensão funciona <strong>somente no Google Chrome</strong> e <strong>somente em
+      páginas do PressReader</strong>. Não funcionará em outros navegadores ou sites.
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
