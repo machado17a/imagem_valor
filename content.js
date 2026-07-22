@@ -9,6 +9,10 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // Rastreia se a página já foi ampliada por nós (o clique é um toggle:
+  // clicar de novo sem isso desfaria o zoom em vez de aplicar).
+  let pageIsZoomed = false;
+
   // ─── Helpers de botão ────────────────────────────────────────────────────
 
   function isButtonDisabled(btn) {
@@ -101,8 +105,15 @@
   }
 
   async function applyMaxZoom() {
+    if (pageIsZoomed) {
+      // Já ampliada por uma captura anterior nesta mesma página — clicar de
+      // novo desfaria o zoom (é um toggle), então não repete o clique.
+      return { method: 'already-zoomed' };
+    }
+
     const { el, x, y } = findPageZoomTarget();
     simulateClick(el, x, y);
+    pageIsZoomed = true;
     // Aguarda a imagem em alta resolução carregar após o clique
     await sleep(1500);
     return {
