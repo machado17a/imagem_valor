@@ -84,6 +84,19 @@ function pickBestTileGroup(images) {
   return best ? best.tiles : null;
 }
 
+async function blobToDataURL(blob) {
+  // URL.createObjectURL não existe no contexto de service worker (MV3),
+  // então convertemos manualmente para data: URL via base64.
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return `data:${blob.type || 'image/jpeg'};base64,${btoa(binary)}`;
+}
+
 async function stitchTiles(tiles) {
   const minLeft = Math.min(...tiles.map((t) => t.left));
   const minTop = Math.min(...tiles.map((t) => t.top));
@@ -323,7 +336,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
         const blob = await stitchTiles(tiles);
-        const url = URL.createObjectURL(blob);
+        const url = await blobToDataURL(blob);
         chrome.downloads.download(
           { url, filename: message.filename || `valor_economico_pagina_${Date.now()}.jpg`, saveAs: true },
           (downloadId) => {
