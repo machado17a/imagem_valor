@@ -15,7 +15,8 @@
     "*://valoreconomico.pressreader.com/*",
     "*://*.pressreader.com/*",
     "*://*.presscdn.com/*",
-    "*://*.pressdisplay.com/*"
+    "*://*.pressdisplay.com/*",
+    "*://*.prcdn.co/*"
   ],
   "background": {
     "service_worker": "background.js"

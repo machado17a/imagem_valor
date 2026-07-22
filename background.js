@@ -21,6 +21,7 @@ const IMAGE_URL_PATTERNS = [
   /pressreader\.com.*image/i,
   /presscdn\.com/i,
   /pressdisplay\.com/i,
+  /prcdn\.co/i,
 ];
 const UI_EXCLUDE = /favicon|\/icon|logo|sprite|placeholder/i;
 
