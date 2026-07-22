@@ -97,6 +97,17 @@ async function blobToDataURL(blob) {
   return `data:${blob.type || 'image/jpeg'};base64,${btoa(binary)}`;
 }
 
+async function fetchWholePageImage(file, page, scale) {
+  // O servidor também aceita o pedido sem left/top/right/bottom e devolve
+  // a página inteira em um único arquivo — evita ter que montar os blocos.
+  const url = `https://t.prcdn.co/img?file=${encodeURIComponent(file)}&page=${encodeURIComponent(page)}&scale=${encodeURIComponent(scale)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Pedido da página inteira falhou (HTTP ${res.status})`);
+  const blob = await res.blob();
+  if (!blob.type.startsWith('image/')) throw new Error('Resposta não é uma imagem');
+  return blob;
+}
+
 async function stitchTiles(tiles) {
   const minLeft = Math.min(...tiles.map((t) => t.left));
   const minTop = Math.min(...tiles.map((t) => t.top));
@@ -335,13 +346,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: false, error: 'Nenhum conjunto de blocos da mesma página/escala encontrado.' });
           return;
         }
-        const blob = await stitchTiles(tiles);
+
+        const { file, page, scale } = tiles[0];
+        let blob;
+        let method = 'single';
+        try {
+          blob = await fetchWholePageImage(file, page, scale);
+        } catch (singleErr) {
+          // Plano B: o pedido da página inteira falhou — monta a partir dos blocos
+          blob = await stitchTiles(tiles);
+          method = 'stitched';
+        }
+
         const url = await blobToDataURL(blob);
         chrome.downloads.download(
           { url, filename: message.filename || `valor_economico_pagina_${Date.now()}.jpg`, saveAs: true },
           (downloadId) => {
             if (chrome.runtime.lastError) sendResponse({ success: false, error: chrome.runtime.lastError.message });
-            else sendResponse({ success: true, downloadId, tileCount: tiles.length });
+            else sendResponse({ success: true, downloadId, tileCount: tiles.length, method });
           }
         );
       } catch (err) {

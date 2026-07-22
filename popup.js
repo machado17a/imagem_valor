@@ -292,7 +292,7 @@ document.getElementById('pageNumber').addEventListener('input', updateCaptureBut
 document.getElementById('btnStitchDownload').addEventListener('click', async () => {
   const btn = document.getElementById('btnStitchDownload');
   btn.disabled = true;
-  setStatus('Montando página a partir dos blocos...', 'info', true);
+  setStatus('Buscando página completa...', 'info', true);
 
   const page = getPageNumber();
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
@@ -301,9 +301,10 @@ document.getElementById('btnStitchDownload').addEventListener('click', async () 
 
   btn.disabled = false;
   if (result && result.success) {
-    setStatus(`Página montada (${result.tileCount} blocos) — download iniciado!`, 'ok');
+    const via = result.method === 'stitched' ? `montada de ${result.tileCount} blocos` : 'pedido único, alta resolução';
+    setStatus(`Página completa (${via}) — download iniciado!`, 'ok');
   } else {
-    setStatus('Erro ao montar página: ' + (result && result.error ? result.error : 'desconhecido'), 'error');
+    setStatus('Erro ao baixar página: ' + (result && result.error ? result.error : 'desconhecido'), 'error');
   }
 });
 
