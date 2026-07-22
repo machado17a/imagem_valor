@@ -66,72 +66,49 @@
     }
   }
 
-  // ─── Zoom máximo no visualizador ─────────────────────────────────────────
+  // ─── Zoom da página (clique único na área da página) ─────────────────────
+  // O visualizador atual não tem mais botões de zoom-in/zoom-out: a página
+  // inteira é clicável (cursor de mão) e alterna entre normal e ampliada.
+
+  function simulateClick(el, x, y) {
+    const opts = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button: 0 };
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, isPrimary: true }));
+    el.dispatchEvent(new MouseEvent('mousedown', opts));
+    el.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, isPrimary: true }));
+    el.dispatchEvent(new MouseEvent('mouseup', opts));
+    el.dispatchEvent(new MouseEvent('click', opts));
+  }
+
+  function findPageZoomTarget() {
+    const container =
+      document.querySelector('.layout') ||
+      document.querySelector('[class*="viewer"]') ||
+      document.querySelector('[class*="reader"]') ||
+      document.querySelector('[class*="page"]') ||
+      document.documentElement;
+
+    const rect = container.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+
+    // Evita cair em cima do hotspot de um artigo específico (.block) —
+    // sobe pro container da página para simular um clique em área neutra.
+    let el = document.elementFromPoint(x, y) || container;
+    while (el && el.classList && el.classList.contains('block') && el.parentElement) {
+      el = el.parentElement;
+    }
+    return { el: el || container, x, y };
+  }
 
   async function applyMaxZoom() {
-    // Espera os botões de zoom aparecerem
-    let zoomInBtn = null;
-    let zoomOutBtn = null;
-
-    for (let i = 0; i < 15; i++) {
-      zoomInBtn = findButton([
-        '[class*="zoom-in"]',
-        '[class*="zoomIn"]',
-        '[aria-label*="zoom in" i]',
-        '[title*="zoom in" i]',
-        '[data-action="zoom-in"]',
-        'button[class*="zoom"]:not([class*="out"])',
-        '.zoom-controls .in',
-        '.viewer-zoom-in',
-      ]);
-      zoomOutBtn = findButton([
-        '[class*="zoom-out"]',
-        '[class*="zoomOut"]',
-        '[aria-label*="zoom out" i]',
-        '[title*="zoom out" i]',
-        '[data-action="zoom-out"]',
-        '.zoom-controls .out',
-        '.viewer-zoom-out',
-      ]);
-      if (zoomInBtn) break;
-      await sleep(500);
-    }
-
-    if (!zoomInBtn) {
-      // Fallback: teclado
-      for (let i = 0; i < 15; i++) {
-        document.dispatchEvent(new KeyboardEvent('keydown', {
-          key: '+', code: 'Equal', keyCode: 187,
-          ctrlKey: true, bubbles: true, cancelable: true,
-        }));
-      }
-      return { method: 'keyboard' };
-    }
-
-    // ── Passo 1: zoom out até o mínimo ─────────────────────────────────────
-    // Garante que partimos do zero para forçar re-request das imagens
-    let outClicks = 0;
-    if (zoomOutBtn) {
-      while (outClicks < 25 && !isButtonDisabled(zoomOutBtn)) {
-        zoomOutBtn.click();
-        outClicks++;
-        await sleep(150);
-      }
-      // Aguarda o viewer estabilizar com as imagens em baixa resolução
-      await sleep(800);
-    }
-
-    // ── Passo 2: zoom in até o máximo ──────────────────────────────────────
-    let inClicks = 0;
-    while (inClicks < 30 && !isButtonDisabled(zoomInBtn)) {
-      zoomInBtn.click();
-      inClicks++;
-      await sleep(250);
-    }
-    // Aguarda o viewer terminar de carregar as imagens em alta resolução
-    await sleep(1000);
-
-    return { method: 'button', outClicks, inClicks };
+    const { el, x, y } = findPageZoomTarget();
+    simulateClick(el, x, y);
+    // Aguarda a imagem em alta resolução carregar após o clique
+    await sleep(1500);
+    return {
+      method: 'click',
+      target: el.tagName + (el.className ? '.' + String(el.className).trim().replace(/\s+/g, '.') : ''),
+    };
   }
 
   // ─── Scroll pela página para carregar todas as imagens ───────────────────
