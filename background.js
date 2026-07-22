@@ -31,6 +31,87 @@ function isNewspaperImage(url, mimeType) {
   return IMAGE_URL_PATTERNS.some((p) => p.test(url));
 }
 
+// ─── Remontagem de página a partir de blocos (tiles) ───────────────────────
+// O visualizador atual não serve mais a página como um arquivo único: ele
+// pede recortes retangulares via query string (left/top/right/bottom) na
+// escala pedida. Aqui juntamos todos os recortes de uma mesma página/escala
+// de volta em uma única imagem.
+
+function parseTileUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)prcdn\.co$/i.test(u.hostname)) return null;
+    if (!u.pathname.endsWith('/img')) return null;
+
+    const p = u.searchParams;
+    const left = parseFloat(p.get('left'));
+    const top = parseFloat(p.get('top'));
+    const right = parseFloat(p.get('right'));
+    const bottom = parseFloat(p.get('bottom'));
+    if ([left, top, right, bottom].some((n) => Number.isNaN(n))) return null;
+
+    return {
+      url,
+      file: p.get('file'),
+      page: p.get('page'),
+      scale: p.get('scale'),
+      left, top, right, bottom,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function pickBestTileGroup(images) {
+  const tiles = (images || []).map((i) => parseTileUrl(i.url)).filter(Boolean);
+  if (tiles.length < 2) return null;
+
+  const groups = {};
+  for (const t of tiles) {
+    const key = `${t.file}|${t.page}|${t.scale}`;
+    (groups[key] = groups[key] || []).push(t);
+  }
+
+  // Escolhe o grupo de maior escala (maior resolução); empate → mais blocos
+  let best = null;
+  for (const key in groups) {
+    const g = groups[key];
+    const scale = parseFloat(g[0].scale) || 0;
+    if (!best || scale > best.scale || (scale === best.scale && g.length > best.tiles.length)) {
+      best = { scale, tiles: g };
+    }
+  }
+  return best ? best.tiles : null;
+}
+
+async function stitchTiles(tiles) {
+  const minLeft = Math.min(...tiles.map((t) => t.left));
+  const minTop = Math.min(...tiles.map((t) => t.top));
+  const maxRight = Math.max(...tiles.map((t) => t.right));
+  const maxBottom = Math.max(...tiles.map((t) => t.bottom));
+
+  const width = Math.round(maxRight - minLeft);
+  const height = Math.round(maxBottom - minTop);
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  for (const t of tiles) {
+    const res = await fetch(t.url);
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    ctx.drawImage(
+      bitmap,
+      Math.round(t.left - minLeft),
+      Math.round(t.top - minTop),
+      Math.round(t.right - t.left),
+      Math.round(t.bottom - t.top)
+    );
+    bitmap.close();
+  }
+
+  return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.92 });
+}
+
 // ─── CDP helpers ─────────────────────────────────────────────────────────────
 
 function cdpAttach(tabId) {
@@ -232,6 +313,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         success: true,
       }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
+
+  } else if (message.action === 'stitchAndDownload') {
+    (async () => {
+      try {
+        const tiles = pickBestTileGroup(message.images);
+        if (!tiles) {
+          sendResponse({ success: false, error: 'Nenhum conjunto de blocos da mesma página/escala encontrado.' });
+          return;
+        }
+        const blob = await stitchTiles(tiles);
+        const url = URL.createObjectURL(blob);
+        chrome.downloads.download(
+          { url, filename: message.filename || `valor_economico_pagina_${Date.now()}.jpg`, saveAs: true },
+          (downloadId) => {
+            if (chrome.runtime.lastError) sendResponse({ success: false, error: chrome.runtime.lastError.message });
+            else sendResponse({ success: true, downloadId, tileCount: tiles.length });
+          }
+        );
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
   }
 
   return true;

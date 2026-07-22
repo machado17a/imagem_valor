@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Valor Econômico - Extrator de Imagens",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Extrai imagens de alta resolução do Valor Econômico no PressReader",
   "permissions": [
     "webRequest",

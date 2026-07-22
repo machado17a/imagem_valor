@@ -89,6 +89,7 @@
     }
     .group-header.cache   { background: #1b2e1b; color: #7ecf7e; border: 1px solid #2e5e2e; }
     .group-header.network { background: #1b1e30; color: #7eaef0; border: 1px solid #2e3e6e; }
+    .group-header.stitch  { background: #3a2e00; color: #f0c040; border: 1px solid #5a4a00; }
     .group-header .badge {
       margin-left: auto;
       font-size: 10px;
@@ -98,6 +99,7 @@
     }
     .group-header.cache   .badge { background: #2e5e2e; color: #a0e0a0; }
     .group-header.network .badge { background: #2e3e6e; color: #a0c0f0; }
+    .group-header.stitch  .badge { background: #5a4a00; color: #ffe090; }
 
     /* ── comparison row ── */
     .compare-bar {
@@ -267,6 +269,17 @@
 
   <!-- Resultado -->
   <div id="imageSection" style="display:none;">
+
+    <!-- Página remontada a partir dos blocos (tiles) -->
+    <div id="stitchGroup" style="display:none;">
+      <div class="group-header stitch">
+        <span>Página Completa (montada)</span>
+        <span class="badge" id="stitchBadge">0</span>
+      </div>
+      <button id="btnStitchDownload" class="btn btn-primary">
+        🧩 Baixar Página Montada
+      </button>
+    </div>
 
     <!-- Comparação entre as tops das duas fontes -->
     <div id="compareBar" class="compare-bar" style="display:none;"></div>

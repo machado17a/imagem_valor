@@ -6,6 +6,7 @@
 let currentTabId = null;
 let topCacheImage = null;
 let topNetworkImage = null;
+let lastAllImages = [];
 
 function getPageNumber() {
   const val = parseInt(document.getElementById('pageNumber').value, 10);
@@ -43,6 +44,15 @@ function extractFilename(url) {
     return last.length > 32 ? '...' + last.slice(-29) : last || u.hostname;
   } catch {
     return url.slice(0, 40);
+  }
+}
+
+function isTileUrl(url) {
+  try {
+    const u = new URL(url);
+    return /(^|\.)prcdn\.co$/i.test(u.hostname) && u.searchParams.has('left') && u.searchParams.has('top');
+  } catch {
+    return false;
   }
 }
 
@@ -101,6 +111,8 @@ function renderResults(allImages) {
   const section = document.getElementById('imageSection');
   const empty   = document.getElementById('emptySection');
 
+  lastAllImages = allImages || [];
+
   if (!allImages || allImages.length === 0) {
     section.style.display = 'none';
     empty.style.display = 'block';
@@ -109,6 +121,15 @@ function renderResults(allImages) {
 
   section.style.display = 'block';
   empty.style.display = 'none';
+
+  const stitchGroup = document.getElementById('stitchGroup');
+  const tileCount = allImages.filter((i) => isTileUrl(i.url)).length;
+  if (tileCount >= 2) {
+    stitchGroup.style.display = 'block';
+    document.getElementById('stitchBadge').textContent = tileCount;
+  } else {
+    stitchGroup.style.display = 'none';
+  }
 
   const cacheImages   = allImages.filter((i) => i.source === 'disk_cache').sort((a, b) => b.size - a.size);
   const networkImages = allImages.filter((i) => i.source !== 'disk_cache').sort((a, b) => b.size - a.size);
@@ -268,6 +289,24 @@ document.getElementById('btnPagePlus').addEventListener('click', () => {
 
 document.getElementById('pageNumber').addEventListener('input', updateCaptureButton);
 
+document.getElementById('btnStitchDownload').addEventListener('click', async () => {
+  const btn = document.getElementById('btnStitchDownload');
+  btn.disabled = true;
+  setStatus('Montando página a partir dos blocos...', 'info', true);
+
+  const page = getPageNumber();
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+  const filename = `valor_economico_pagina${page}_completa_${timestamp}.jpg`;
+  const result = await sendToBackground({ action: 'stitchAndDownload', images: lastAllImages, filename });
+
+  btn.disabled = false;
+  if (result && result.success) {
+    setStatus(`Página montada (${result.tileCount} blocos) — download iniciado!`, 'ok');
+  } else {
+    setStatus('Erro ao montar página: ' + (result && result.error ? result.error : 'desconhecido'), 'error');
+  }
+});
+
 document.getElementById('btnDownloadCache').addEventListener('click', () => {
   downloadImage(topCacheImage, 'cache');
 });
@@ -280,6 +319,8 @@ document.getElementById('btnClear').addEventListener('click', async () => {
   if (currentTabId) await sendToBackground({ action: 'clearImages', tabId: currentTabId });
   topCacheImage = null;
   topNetworkImage = null;
+  lastAllImages = [];
+  document.getElementById('stitchGroup').style.display = 'none';
   document.getElementById('imageSection').style.display = 'none';
   document.getElementById('emptySection').style.display = 'none';
   setStatus('Dados limpos. Pronto para nova captura.', 'info');
